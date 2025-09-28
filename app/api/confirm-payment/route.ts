@@ -19,50 +19,31 @@ export async function POST(request: NextRequest) {
     const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId)
 
     if (paymentIntent.status === "succeeded") {
-      // Create order in database
-      const { data: order, error } = await supabase
-        .from("orders")
-        .insert({
-          user_id: user.id,
-          store_id: orderData.storeId,
-          total_amount: orderData.totalAmount,
-          status: "confirmed",
-          shipping_address: orderData.shippingAddress,
-          payment_method: "stripe",
-          payment_intent_id: paymentIntentId,
-        })
-        .select()
-        .single()
-
-      if (error) {
-        console.error("Error creating order:", error)
-        return NextResponse.json({ error: "Failed to create order" }, { status: 500 })
-      }
-
-      // Create order items
-      const orderItems = orderData.items.map((item: any) => ({
-        order_id: order.id,
+      const items = orderData.items.map((item: any) => ({
         product_id: item.product.id,
         quantity: item.quantity,
         price: item.product.price + (item.selectedVariant?.priceModifier || 0),
         variant_id: item.selectedVariant?.id || null,
       }))
 
-      await supabase.from("order_items").insert(orderItems)
+      const { data: order, error } = await supabase.rpc("create_order_with_items", {
+        p_user_id: user.id,
+        p_store_id: orderData.storeId,
+        p_total_amount: orderData.totalAmount,
+        p_shipping_address: orderData.shippingAddress,
+        p_payment_method: "stripe",
+        p_payment_intent_id: paymentIntentId,
+        p_items: items,
+      })
 
-      // Update product stock
-      for (const item of orderData.items) {
-        await supabase
-          .from("products")
-          .update({
-            stock_quantity: item.product.stock_quantity - item.quantity,
-          })
-          .eq("id", item.product.id)
+      if (error) {
+        console.error("Error creating order with items:", error)
+        return NextResponse.json({ error: "Failed to create order" }, { status: 500 })
       }
 
       return NextResponse.json({
         success: true,
-        orderId: order.id,
+        order,
       })
     } else {
       return NextResponse.json({ error: "Payment not completed" }, { status: 400 })
