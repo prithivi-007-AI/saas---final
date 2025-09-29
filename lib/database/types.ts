@@ -196,7 +196,7 @@ export interface OrderItem {
 export interface Payment {
   id: string
   orderId: string
-  stripePaymentId?: string
+  razorpay_payment_id?: string
   amount: number
   currency: string
   status: "PENDING" | "PAID" | "FAILED" | "REFUNDED"
