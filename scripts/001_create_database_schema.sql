@@ -224,7 +224,7 @@ CREATE TABLE IF NOT EXISTS order_items (
 CREATE TABLE IF NOT EXISTS payments (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   order_id UUID NOT NULL REFERENCES orders(id),
-  stripe_payment_id TEXT,
+  razorpay_payment_id TEXT,
   amount DECIMAL(10,2) NOT NULL,
   currency TEXT DEFAULT 'USD',
   status TEXT DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'PAID', 'FAILED', 'REFUNDED')),
